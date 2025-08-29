@@ -12,6 +12,8 @@ import { de } from 'date-fns/locale';
 import { CalendarIcon, Clock, MapPin, Users, FileText, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useTimeSlots } from '@/hooks/useTimeSlots';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PatientData {
   firstName: string;
@@ -35,9 +37,22 @@ interface PatientConditions {
 
 interface BookingFormProps {
   partnerId?: string;
+  companyId?: string;
+  partnerEmail?: string;
+  workingHours?: {
+    start: string;
+    end: string;
+  };
+  bufferMinutes?: number;
 }
 
-export const BookingForm: React.FC<BookingFormProps> = ({ partnerId }) => {
+export const BookingForm: React.FC<BookingFormProps> = ({ 
+  partnerId, 
+  companyId, 
+  partnerEmail, 
+  workingHours, 
+  bufferMinutes = 15 
+}) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [patientData, setPatientData] = useState<PatientData>({
     firstName: '',
@@ -59,28 +74,24 @@ export const BookingForm: React.FC<BookingFormProps> = ({ partnerId }) => {
   });
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(partnerEmail || '');
   
   const { toast } = useToast();
+
+  // Use time slots hook for dynamic scheduling
+  const defaultWorkingHours = workingHours || { start: '08:00', end: '18:00' };
+  const { timeSlots, loading: slotsLoading } = useTimeSlots(
+    selectedDate,
+    companyId || '',
+    defaultWorkingHours,
+    bufferMinutes
+  );
 
   const steps = [
     { number: 1, title: 'Patientendaten', icon: Users },
     { number: 2, title: 'Besonderheiten', icon: FileText },
     { number: 3, title: 'Terminwahl', icon: Clock },
     { number: 4, title: 'Bestätigung', icon: CheckCircle }
-  ];
-
-  const timeSlots = [
-    '08:00', '08:15', '08:30', '08:45',
-    '09:00', '09:15', '09:30', '09:45',
-    '10:00', '10:15', '10:30', '10:45',
-    '11:00', '11:15', '11:30', '11:45',
-    '12:00', '12:15', '12:30', '12:45',
-    '13:00', '13:15', '13:30', '13:45',
-    '14:00', '14:15', '14:30', '14:45',
-    '15:00', '15:15', '15:30', '15:45',
-    '16:00', '16:15', '16:30', '16:45',
-    '17:00', '17:15', '17:30', '17:45'
   ];
 
   const handleNext = () => {
@@ -95,21 +106,91 @@ export const BookingForm: React.FC<BookingFormProps> = ({ partnerId }) => {
     }
   };
 
-  const handleSubmit = () => {
-    toast({
-      title: "Buchung erfolgreich!",
-      description: "Ihre Transportbuchung wurde erfolgreich übermittelt. Sie erhalten eine Bestätigung per E-Mail.",
-    });
-    
-    // Here you would submit to Supabase database
-    console.log('Booking data:', {
-      patientData,
-      conditions,
-      selectedDate,
-      selectedTime,
-      email,
-      partnerId
-    });
+  const handleSubmit = async () => {
+    try {
+      if (!partnerId || !companyId) {
+        throw new Error('Partner-ID oder Unternehmen-ID fehlt');
+      }
+
+      if (!selectedDate || !selectedTime) {
+        throw new Error('Datum und Uhrzeit sind erforderlich');
+      }
+
+      // Combine date and time
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const pickupDateTime = new Date(selectedDate);
+      pickupDateTime.setHours(hours, minutes, 0, 0);
+
+      // Generate a case number
+      const caseNumber = `KT-${Date.now()}`;
+
+      const bookingData = {
+        organization_id: companyId,
+        partner_link_id: null, // We'll use the new partners table relation
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        birth_date: patientData.birthDate?.toISOString().split('T')[0] || '',
+        case_number: caseNumber,
+        pickup_address: patientData.pickupAddress,
+        dropoff_address: patientData.destinationAddress, // Use correct column name
+        patient_notes: patientData.additionalInfo || null,
+        is_adipositas: conditions.adipositas,
+        is_infectious: conditions.infectious,
+        is_wheelchair: conditions.wheelchair,
+        needs_barrier_free: conditions.barrierFree,
+        is_visually_impaired: conditions.visuallyImpaired,
+        special_requirements_note: conditions.notes || null,
+        pickup_datetime: pickupDateTime.toISOString(),
+        confirmation_email: email,
+        estimated_drive_minutes: 30, // Default, can be calculated with Google Maps API later
+        buffer_minutes: bufferMinutes,
+        status: 'confirmed',
+        company_id: companyId,
+        partner_id: partnerId
+      };
+
+      const { error } = await supabase
+        .from('bookings')
+        .insert([bookingData]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Buchung erfolgreich!",
+        description: "Ihre Transportbuchung wurde erfolgreich übermittelt. Sie erhalten eine Bestätigung per E-Mail.",
+      });
+      
+      // Reset form
+      setCurrentStep(1);
+      setPatientData({
+        firstName: '',
+        lastName: '',
+        birthDate: undefined,
+        caseNumber: `KT-${Date.now().toString().slice(-6)}`,
+        pickupAddress: '',
+        destinationAddress: '',
+        additionalInfo: ''
+      });
+      setConditions({
+        adipositas: false,
+        infectious: false,
+        wheelchair: false,
+        barrierFree: false,
+        visuallyImpaired: false,
+        additionalNotes: false,
+        notes: ''
+      });
+      setSelectedDate(undefined);
+      setSelectedTime('');
+      setEmail(partnerEmail || '');
+    } catch (error: any) {
+      console.error('Error submitting booking:', error);
+      toast({
+        title: "Buchung fehlgeschlagen",
+        description: error.message || "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        variant: "destructive"
+      });
+    }
   };
 
   const renderStepContent = () => {
@@ -369,22 +450,37 @@ export const BookingForm: React.FC<BookingFormProps> = ({ partnerId }) => {
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                    {timeSlots.map((time) => (
-                      <Button
-                        key={time}
-                        variant={selectedTime === time ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedTime(time)}
-                        className={cn(
-                          "h-12 text-base font-medium transition-all",
-                          selectedTime === time && "scale-105 shadow-md"
-                        )}
-                      >
-                        {time}
-                      </Button>
-                    ))}
-                  </div>
+                  {slotsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                      <p className="text-muted-foreground">Lade verfügbare Zeiten...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {timeSlots.map((slot) => (
+                        <Button
+                          key={slot.time}
+                          variant={selectedTime === slot.time ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => slot.available && setSelectedTime(slot.time)}
+                          disabled={!slot.available}
+                          className={cn(
+                            "h-12 text-base font-medium transition-all",
+                            selectedTime === slot.time && "scale-105 shadow-md",
+                            !slot.available && "opacity-50 cursor-not-allowed"
+                          )}
+                          title={!slot.available ? slot.reason : undefined}
+                        >
+                          {slot.time}
+                        </Button>
+                      ))}
+                      {timeSlots.length === 0 && !slotsLoading && (
+                        <div className="col-span-full text-center py-4 text-muted-foreground">
+                          Keine verfügbaren Zeiten für dieses Datum
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
