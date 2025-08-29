@@ -16,12 +16,18 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          additional_info: string | null
+          additional_notes: string | null
+          barrier_free: boolean | null
           birth_date: string
+          booking_date: string | null
           buffer_minutes: number
           calendar_event_id: string | null
           case_number: string
+          company_id: string | null
           confirmation_email: string
           created_at: string
+          destination_address: string | null
           dropoff_address: string
           estimated_drive_minutes: number
           first_name: string
@@ -34,21 +40,29 @@ export type Database = {
           last_name: string
           needs_barrier_free: boolean
           organization_id: string
+          partner_id: string | null
           partner_link_id: string
           patient_notes: string | null
           pickup_address: string
           pickup_datetime: string
+          pickup_time: string | null
           special_requirements_note: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          additional_info?: string | null
+          additional_notes?: string | null
+          barrier_free?: boolean | null
           birth_date: string
+          booking_date?: string | null
           buffer_minutes?: number
           calendar_event_id?: string | null
           case_number: string
+          company_id?: string | null
           confirmation_email: string
           created_at?: string
+          destination_address?: string | null
           dropoff_address: string
           estimated_drive_minutes?: number
           first_name: string
@@ -61,21 +75,29 @@ export type Database = {
           last_name: string
           needs_barrier_free?: boolean
           organization_id: string
+          partner_id?: string | null
           partner_link_id: string
           patient_notes?: string | null
           pickup_address: string
           pickup_datetime: string
+          pickup_time?: string | null
           special_requirements_note?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          additional_info?: string | null
+          additional_notes?: string | null
+          barrier_free?: boolean | null
           birth_date?: string
+          booking_date?: string | null
           buffer_minutes?: number
           calendar_event_id?: string | null
           case_number?: string
+          company_id?: string | null
           confirmation_email?: string
           created_at?: string
+          destination_address?: string | null
           dropoff_address?: string
           estimated_drive_minutes?: number
           first_name?: string
@@ -88,20 +110,36 @@ export type Database = {
           last_name?: string
           needs_barrier_free?: boolean
           organization_id?: string
+          partner_id?: string | null
           partner_link_id?: string
           patient_notes?: string | null
           pickup_address?: string
           pickup_datetime?: string
+          pickup_time?: string | null
           special_requirements_note?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
           {
@@ -113,34 +151,84 @@ export type Database = {
           },
         ]
       }
+      emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          last_used_at: string
+          partner_id: string
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          last_used_at?: string
+          partner_id: string
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          last_used_at?: string
+          partner_id?: string
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           address: string | null
+          arbeitszeiten_end: string | null
+          arbeitszeiten_start: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
           id: string
+          karenzzeit: number | null
           name: string
+          slug: string | null
+          standard_email: string | null
           updated_at: string
           working_hours: Json
         }
         Insert: {
           address?: string | null
+          arbeitszeiten_end?: string | null
+          arbeitszeiten_start?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           id?: string
+          karenzzeit?: number | null
           name: string
+          slug?: string | null
+          standard_email?: string | null
           updated_at?: string
           working_hours?: Json
         }
         Update: {
           address?: string | null
+          arbeitszeiten_end?: string | null
+          arbeitszeiten_start?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           id?: string
+          karenzzeit?: number | null
           name?: string
+          slug?: string | null
+          standard_email?: string | null
           updated_at?: string
           working_hours?: Json
         }
@@ -210,6 +298,47 @@ export type Database = {
           {
             foreignKeyName: "partner_links_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
