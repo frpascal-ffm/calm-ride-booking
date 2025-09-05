@@ -12,6 +12,10 @@ import Dashboard from "./components/Dashboard";
 import PartnersPage from "./pages/dashboard/PartnersPage";
 import BookingsPage from "./pages/dashboard/BookingsPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
+import GeneralSettingsPage from "./pages/dashboard/settings/GeneralSettingsPage";
+import UsersSettingsPage from "./pages/dashboard/settings/UsersSettingsPage";
+import NotificationsSettingsPage from "./pages/dashboard/settings/NotificationsSettingsPage";
+import SecuritySettingsPage from "./pages/dashboard/settings/SecuritySettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -24,12 +28,16 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage onAuthSuccess={() => window.location.href = '/dashboard'} />} />
-          <Route path="/partners" element={<PartnerDirectory />} />
           <Route path="/dashboard" element={<Dashboard />}>
             <Route index element={<PartnersPage />} />
             <Route path="partners" element={<PartnersPage />} />
+            <Route path="directory" element={<PartnerDirectory />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings/general" element={<GeneralSettingsPage />} />
+            <Route path="settings/users" element={<UsersSettingsPage />} />
+            <Route path="settings/notifications" element={<NotificationsSettingsPage />} />
+            <Route path="settings/security" element={<SecuritySettingsPage />} />
           </Route>
           <Route path="/:companySlug/:partnerSlug" element={<PartnerBookingPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
