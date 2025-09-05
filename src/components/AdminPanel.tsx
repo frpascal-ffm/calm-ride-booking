@@ -6,92 +6,67 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Copy, Users, Calendar, Settings, ExternalLink } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, Copy, Users, Calendar, Settings, ExternalLink, Trash2, Edit, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Partner {
-  id: string;
-  name: string;
-  email: string;
-  active: boolean;
-  url: string;
-  createdAt: Date;
-}
+import { useBookings } from '@/hooks/useBookings';
+import { usePartners } from '@/hooks/usePartners';
+import { useOrganizations } from '@/hooks/useOrganizations';
 
 export const AdminPanel: React.FC = () => {
-  const [partners, setPartners] = useState<Partner[]>([
-    {
-      id: '1',
-      name: 'Pflegedienst Müller',
-      email: 'kontakt@pflegedienst-mueller.de',
-      active: true,
-      url: 'https://booking.krankentransport.de/partner/pflegedienst-mueller',
-      createdAt: new Date('2024-01-15')
-    },
-    {
-      id: '2',
-      name: 'Krankenhaus Nord',
-      email: 'transport@krankenhaus-nord.de',
-      active: true,
-      url: 'https://booking.krankentransport.de/partner/krankenhaus-nord',
-      createdAt: new Date('2024-02-20')
-    },
-    {
-      id: '3',
-      name: 'Reha-Zentrum Süd',
-      email: 'buchung@reha-sued.de',
-      active: false,
-      url: 'https://booking.krankentransport.de/partner/reha-sued',
-      createdAt: new Date('2024-03-10')
-    }
-  ]);
+  const { bookings, loading: bookingsLoading, error: bookingsError, updateBookingStatus, deleteBooking } = useBookings();
+  const { partners, loading: partnersLoading, error: partnersError, addPartner, togglePartnerStatus, deletePartner } = usePartners();
+  const { organizations, loading: orgsLoading } = useOrganizations();
 
   const [newPartner, setNewPartner] = useState({
     name: '',
-    email: ''
+    email: '',
+    company_id: ''
   });
+
+  const [selectedOrg, setSelectedOrg] = useState<string>('');
 
   const { toast } = useToast();
 
-  const generatePartnerUrl = (name: string) => {
-    const slug = name.toLowerCase()
-      .replace(/[äöüß]/g, (match) => {
-        const replacements: { [key: string]: string } = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' };
-        return replacements[match] || match;
-      })
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-    
-    return `https://booking.krankentransport.de/partner/${slug}`;
+  const generatePartnerUrl = (companySlug: string, partnerSlug: string) => {
+    return `${window.location.origin}/${companySlug}/${partnerSlug}`;
   };
 
-  const addPartner = () => {
-    if (newPartner.name && newPartner.email) {
-      const partner: Partner = {
-        id: Date.now().toString(),
-        name: newPartner.name,
-        email: newPartner.email,
-        active: true,
-        url: generatePartnerUrl(newPartner.name),
-        createdAt: new Date()
-      };
-      
-      setPartners([...partners, partner]);
-      setNewPartner({ name: '', email: '' });
-      
-      toast({
-        title: "Partner hinzugefügt",
-        description: `${partner.name} wurde erfolgreich erstellt.`
-      });
+  const handleAddPartner = async () => {
+    if (newPartner.name && newPartner.email && newPartner.company_id) {
+      try {
+        await addPartner(newPartner);
+        setNewPartner({ name: '', email: '', company_id: '' });
+        
+        toast({
+          title: "Partner hinzugefügt",
+          description: `${newPartner.name} wurde erfolgreich erstellt.`
+        });
+      } catch (error) {
+        toast({
+          title: "Fehler",
+          description: "Partner konnte nicht hinzugefügt werden.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const togglePartnerStatus = (id: string) => {
-    setPartners(partners.map(partner => 
-      partner.id === id 
-        ? { ...partner, active: !partner.active }
-        : partner
-    ));
+  const handleTogglePartnerStatus = async (id: string) => {
+    try {
+      await togglePartnerStatus(id);
+      toast({
+        title: "Status geändert",
+        description: "Partner-Status wurde erfolgreich aktualisiert."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Status konnte nicht geändert werden.",
+        variant: "destructive"
+      });
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -102,28 +77,71 @@ export const AdminPanel: React.FC = () => {
     });
   };
 
-  const mockBookings = [
-    {
-      id: '1',
-      patient: 'Max Mustermann',
-      partner: 'Pflegedienst Müller',
-      date: '24.08.2024',
-      time: '09:30',
-      from: 'Hauptstr. 123, 12345 Berlin',
-      to: 'Krankenhaus Nord, Nordstr. 456, 12345 Berlin',
-      status: 'bestätigt'
-    },
-    {
-      id: '2',
-      patient: 'Anna Schmidt',
-      partner: 'Krankenhaus Nord',
-      date: '24.08.2024',
-      time: '14:15',
-      from: 'Parkweg 789, 12345 Berlin',
-      to: 'Reha-Zentrum Süd, Südstr. 321, 12345 Berlin',
-      status: 'geplant'
+  const getStatusIcon = (status: string | null) => {
+    switch (status) {
+      case 'bestätigt':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'geplant':
+        return <Clock className="w-4 h-4 text-blue-500" />;
+      case 'storniert':
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
-  ];
+  };
+
+  const getStatusColor = (status: string | null) => {
+    switch (status) {
+      case 'bestätigt':
+        return 'default';
+      case 'geplant':
+        return 'secondary';
+      case 'storniert':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE');
+  };
+
+  const formatTime = (timeString: string) => {
+    return timeString.slice(0, 5); // HH:MM format
+  };
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    try {
+      await deleteBooking(bookingId);
+      toast({
+        title: "Buchung gelöscht",
+        description: "Die Buchung wurde erfolgreich gelöscht."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Buchung konnte nicht gelöscht werden.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      await updateBookingStatus(bookingId, newStatus);
+      toast({
+        title: "Status aktualisiert",
+        description: "Der Buchungsstatus wurde erfolgreich geändert."
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Status konnte nicht geändert werden.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6">
@@ -181,8 +199,26 @@ export const AdminPanel: React.FC = () => {
                     placeholder="kontakt@beispiel.de"
                   />
                 </div>
-                <Button onClick={addPartner} className="w-full">
-                  Partner hinzufügen
+                <Select value={newPartner.company_id} onValueChange={(value) => setNewPartner({ ...newPartner, company_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Organisation wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-3">
+                <Button onClick={handleAddPartner} className="w-full" disabled={partnersLoading}>
+                  {partnersLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Wird hinzugefügt...</>
+                  ) : (
+                    "Partner hinzufügen"
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -204,18 +240,20 @@ export const AdminPanel: React.FC = () => {
                       <p className="text-sm text-muted-foreground">{partner.email}</p>
                       <div className="flex items-center space-x-2 text-sm">
                         <span className="text-muted-foreground">Buchungs-URL:</span>
-                        <code className="bg-muted px-2 py-1 rounded text-xs">{partner.url}</code>
+                        <code className="bg-muted px-2 py-1 rounded text-xs">
+                          {partner.organization ? generatePartnerUrl(partner.organization.slug, partner.slug) : 'URL nicht verfügbar'}
+                        </code>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(partner.url)}
+                          onClick={() => copyToClipboard(partner.organization ? generatePartnerUrl(partner.organization.slug, partner.slug) : '')}
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(partner.url, '_blank')}
+                          onClick={() => partner.organization && window.open(generatePartnerUrl(partner.organization.slug, partner.slug), '_blank')}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Button>
@@ -229,7 +267,7 @@ export const AdminPanel: React.FC = () => {
                         <Switch
                           id={`toggle-${partner.id}`}
                           checked={partner.active}
-                          onCheckedChange={() => togglePartnerStatus(partner.id)}
+                          onCheckedChange={() => handleTogglePartnerStatus(partner.id)}
                         />
                       </div>
                     </div>
@@ -243,26 +281,93 @@ export const AdminPanel: React.FC = () => {
         <TabsContent value="bookings" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Aktuelle Buchungen</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Aktuelle Buchungen</span>
+                {bookingsLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+              </CardTitle>
             </CardHeader>
             <CardContent>
+              {bookingsError && (
+                <div className="text-red-500 text-sm mb-4">
+                  Fehler beim Laden der Buchungen: {bookingsError}
+                </div>
+              )}
               <div className="space-y-4">
-                {mockBookings.map((booking) => (
-                  <div key={booking.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">{booking.patient}</h4>
-                      <Badge variant={booking.status === 'bestätigt' ? 'default' : 'secondary'}>
-                        {booking.status}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                      <div>Partner: {booking.partner}</div>
-                      <div>Termin: {booking.date} um {booking.time}</div>
-                      <div>Von: {booking.from}</div>
-                      <div>Nach: {booking.to}</div>
-                    </div>
+                {bookings.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    Keine Buchungen vorhanden
                   </div>
-                ))}
+                ) : (
+                  bookings.map((booking) => (
+                    <div key={booking.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold flex items-center space-x-2">
+                          {getStatusIcon(booking.status)}
+                          <span>{booking.patient_name}</span>
+                        </h4>
+                        <div className="flex items-center space-x-2">
+                          <Select
+                            value={booking.status || 'geplant'}
+                            onValueChange={(value) => handleUpdateBookingStatus(booking.id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="geplant">Geplant</SelectItem>
+                              <SelectItem value="bestätigt">Bestätigt</SelectItem>
+                              <SelectItem value="storniert">Storniert</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Buchung löschen</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sind Sie sicher, dass Sie diese Buchung löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBooking(booking.id)}>
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                        <div>Partner: {booking.partner?.name || 'Unbekannt'}</div>
+                        <div>Termin: {formatDate(booking.booking_date)} um {formatTime(booking.pickup_time)}</div>
+                        <div>Von: {booking.pickup_address}</div>
+                        <div>Nach: {booking.destination_address}</div>
+                        {booking.case_number && (
+                          <div className="md:col-span-2">Fallnummer: {booking.case_number}</div>
+                        )}
+                        {booking.patient_insurance && (
+                          <div>Versicherung: {booking.patient_insurance}</div>
+                        )}
+                        {(booking.wheelchair || booking.adipositas || booking.infectious || booking.visually_impaired) && (
+                          <div className="md:col-span-2">
+                            <span>Besonderheiten: </span>
+                            {[
+                              booking.wheelchair && 'Rollstuhl',
+                              booking.adipositas && 'Adipositas',
+                              booking.infectious && 'Infektiös',
+                              booking.visually_impaired && 'Sehbeeinträchtigt'
+                            ].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

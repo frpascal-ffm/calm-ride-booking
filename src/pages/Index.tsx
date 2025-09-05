@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BookingForm } from '@/components/BookingForm';
 import { AdminPanel } from '@/components/AdminPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Users, Clock, Shield, ArrowRight } from 'lucide-react';
+import { Calendar, Users, Clock, Shield, ArrowRight, ExternalLink } from 'lucide-react';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'home' | 'booking' | 'admin'>('home');
@@ -81,6 +82,17 @@ const Index = () => {
               className="text-lg px-8 py-6"
             >
               Admin Dashboard
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="lg"
+              asChild
+              className="text-lg px-8 py-6"
+            >
+              <Link to="/partners">
+                Partner-Verzeichnis
+                <ExternalLink className="ml-2 w-5 h-5" />
+              </Link>
             </Button>
           </div>
         </div>

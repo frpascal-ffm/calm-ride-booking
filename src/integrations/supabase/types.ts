@@ -18,107 +18,71 @@ export type Database = {
         Row: {
           additional_info: string | null
           additional_notes: string | null
+          adipositas: boolean | null
           barrier_free: boolean | null
-          birth_date: string
-          booking_date: string | null
-          buffer_minutes: number
-          calendar_event_id: string | null
-          case_number: string
+          booking_date: string
+          case_number: string | null
           company_id: string | null
-          confirmation_email: string
           created_at: string
-          destination_address: string | null
-          dropoff_address: string
-          estimated_drive_minutes: number
-          first_name: string
-          has_special_requirements: boolean
+          destination_address: string
           id: string
-          is_adipositas: boolean
-          is_infectious: boolean
-          is_visually_impaired: boolean
-          is_wheelchair: boolean
-          last_name: string
-          needs_barrier_free: boolean
-          organization_id: string
+          infectious: boolean | null
           partner_id: string | null
-          partner_link_id: string
-          patient_notes: string | null
+          patient_birth_date: string | null
+          patient_insurance: string | null
+          patient_name: string
           pickup_address: string
-          pickup_datetime: string
-          pickup_time: string | null
-          special_requirements_note: string | null
-          status: string
+          pickup_time: string
+          status: string | null
           updated_at: string
+          visually_impaired: boolean | null
+          wheelchair: boolean | null
         }
         Insert: {
           additional_info?: string | null
           additional_notes?: string | null
+          adipositas?: boolean | null
           barrier_free?: boolean | null
-          birth_date: string
-          booking_date?: string | null
-          buffer_minutes?: number
-          calendar_event_id?: string | null
-          case_number: string
+          booking_date: string
+          case_number?: string | null
           company_id?: string | null
-          confirmation_email: string
           created_at?: string
-          destination_address?: string | null
-          dropoff_address: string
-          estimated_drive_minutes?: number
-          first_name: string
-          has_special_requirements?: boolean
+          destination_address: string
           id?: string
-          is_adipositas?: boolean
-          is_infectious?: boolean
-          is_visually_impaired?: boolean
-          is_wheelchair?: boolean
-          last_name: string
-          needs_barrier_free?: boolean
-          organization_id: string
+          infectious?: boolean | null
           partner_id?: string | null
-          partner_link_id: string
-          patient_notes?: string | null
+          patient_birth_date?: string | null
+          patient_insurance?: string | null
+          patient_name: string
           pickup_address: string
-          pickup_datetime: string
-          pickup_time?: string | null
-          special_requirements_note?: string | null
-          status?: string
+          pickup_time: string
+          status?: string | null
           updated_at?: string
+          visually_impaired?: boolean | null
+          wheelchair?: boolean | null
         }
         Update: {
           additional_info?: string | null
           additional_notes?: string | null
+          adipositas?: boolean | null
           barrier_free?: boolean | null
-          birth_date?: string
-          booking_date?: string | null
-          buffer_minutes?: number
-          calendar_event_id?: string | null
-          case_number?: string
+          booking_date?: string
+          case_number?: string | null
           company_id?: string | null
-          confirmation_email?: string
           created_at?: string
-          destination_address?: string | null
-          dropoff_address?: string
-          estimated_drive_minutes?: number
-          first_name?: string
-          has_special_requirements?: boolean
+          destination_address?: string
           id?: string
-          is_adipositas?: boolean
-          is_infectious?: boolean
-          is_visually_impaired?: boolean
-          is_wheelchair?: boolean
-          last_name?: string
-          needs_barrier_free?: boolean
-          organization_id?: string
+          infectious?: boolean | null
           partner_id?: string | null
-          partner_link_id?: string
-          patient_notes?: string | null
+          patient_birth_date?: string | null
+          patient_insurance?: string | null
+          patient_name?: string
           pickup_address?: string
-          pickup_datetime?: string
-          pickup_time?: string | null
-          special_requirements_note?: string | null
-          status?: string
+          pickup_time?: string
+          status?: string | null
           updated_at?: string
+          visually_impaired?: boolean | null
+          wheelchair?: boolean | null
         }
         Relationships: [
           {
@@ -129,24 +93,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bookings_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_partner_link_id_fkey"
-            columns: ["partner_link_id"]
-            isOneToOne: false
-            referencedRelation: "partner_links"
             referencedColumns: ["id"]
           },
         ]
@@ -188,121 +138,42 @@ export type Database = {
       }
       organizations: {
         Row: {
-          address: string | null
           arbeitszeiten_end: string | null
           arbeitszeiten_start: string | null
-          contact_email: string | null
-          contact_phone: string | null
-          created_at: string
+          created_at: string | null
           id: string
           karenzzeit: number | null
           name: string
-          slug: string | null
+          settings: Json | null
+          slug: string
           standard_email: string | null
-          updated_at: string
-          working_hours: Json
+          updated_at: string | null
         }
         Insert: {
-          address?: string | null
           arbeitszeiten_end?: string | null
           arbeitszeiten_start?: string | null
-          contact_email?: string | null
-          contact_phone?: string | null
-          created_at?: string
+          created_at?: string | null
           id?: string
           karenzzeit?: number | null
           name: string
-          slug?: string | null
+          settings?: Json | null
+          slug: string
           standard_email?: string | null
-          updated_at?: string
-          working_hours?: Json
+          updated_at?: string | null
         }
         Update: {
-          address?: string | null
           arbeitszeiten_end?: string | null
           arbeitszeiten_start?: string | null
-          contact_email?: string | null
-          contact_phone?: string | null
-          created_at?: string
+          created_at?: string | null
           id?: string
           karenzzeit?: number | null
           name?: string
-          slug?: string | null
+          settings?: Json | null
+          slug?: string
           standard_email?: string | null
-          updated_at?: string
-          working_hours?: Json
+          updated_at?: string | null
         }
         Relationships: []
-      }
-      partner_known_emails: {
-        Row: {
-          email: string
-          id: string
-          last_used_at: string
-          organization_id: string
-          usage_count: number
-        }
-        Insert: {
-          email: string
-          id?: string
-          last_used_at?: string
-          organization_id: string
-          usage_count?: number
-        }
-        Update: {
-          email?: string
-          id?: string
-          last_used_at?: string
-          organization_id?: string
-          usage_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "partner_known_emails_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      partner_links: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          label: string
-          organization_id: string
-          token: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          label: string
-          organization_id: string
-          token: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          label?: string
-          organization_id?: string
-          token?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "partner_links_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       partners: {
         Row: {

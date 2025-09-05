@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ArrowLeft, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getPartnerWithCompany } from '@/data/seedData';
 
 interface Partner {
   id: string;
@@ -37,37 +38,56 @@ const PartnerBookingPage = () => {
     try {
       setLoading(true);
       
-      // Fetch partner with company data
-      const { data, error: fetchError } = await supabase
-        .from('partners')
-        .select(`
-          id,
-          name,
-          email,
-          company_id,
-          active,
-          company:organizations!company_id (
+      // Try to fetch from Supabase first
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('partners')
+          .select(`
+            id,
             name,
-            slug,
-            arbeitszeiten_start,
-            arbeitszeiten_end,
-            karenzzeit
-          )
-        `)
-        .eq('slug', partnerSlug)
-        .eq('active', true)
-        .single();
+            email,
+            company_id,
+            active,
+            company:organizations!company_id (
+              name,
+              slug,
+              arbeitszeiten_start,
+              arbeitszeiten_end,
+              karenzzeit
+            )
+          `)
+          .eq('slug', partnerSlug)
+          .eq('active', true)
+          .single();
 
-      if (fetchError) {
-        throw fetchError;
+        if (!fetchError && data && data.company && data.company.slug === companySlug) {
+          setPartner(data as Partner);
+          return;
+        }
+      } catch (supabaseError) {
+        console.log('Supabase not available, using seed data:', supabaseError);
       }
-
-      if (!data || !data.company || data.company.slug !== companySlug) {
+      
+      // Fallback to seed data
+      const seedPartner = getPartnerWithCompany(companySlug!, partnerSlug!);
+      if (seedPartner) {
+        setPartner({
+          id: seedPartner.id,
+          name: seedPartner.name,
+          email: seedPartner.email,
+          company_id: seedPartner.company_id,
+          active: seedPartner.active,
+          company: {
+            name: seedPartner.company.name,
+            slug: seedPartner.company.slug,
+            arbeitszeiten_start: seedPartner.company.arbeitszeiten_start,
+            arbeitszeiten_end: seedPartner.company.arbeitszeiten_end,
+            karenzzeit: seedPartner.company.karenzzeit
+          }
+        });
+      } else {
         setError('Partner nicht gefunden oder nicht aktiv');
-        return;
       }
-
-      setPartner(data as Partner);
     } catch (err: any) {
       console.error('Error fetching partner:', err);
       setError('Partner konnte nicht geladen werden');
