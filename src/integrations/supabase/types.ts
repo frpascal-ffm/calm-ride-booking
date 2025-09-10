@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           additional_info: string | null
           additional_notes: string | null
+          attachment_url: string | null
           barrier_free: boolean | null
           birth_date: string
           booking_date: string | null
@@ -31,6 +32,11 @@ export type Database = {
           dropoff_address: string
           estimated_drive_minutes: number
           first_name: string
+          flags_adipositas: boolean | null
+          flags_barrier_free: boolean | null
+          flags_infectious: boolean | null
+          flags_visually_impaired: boolean | null
+          flags_wheelchair: boolean | null
           has_special_requirements: boolean
           id: string
           is_adipositas: boolean
@@ -49,10 +55,12 @@ export type Database = {
           special_requirements_note: string | null
           status: string
           updated_at: string
+          vehicle_id: string | null
         }
         Insert: {
           additional_info?: string | null
           additional_notes?: string | null
+          attachment_url?: string | null
           barrier_free?: boolean | null
           birth_date: string
           booking_date?: string | null
@@ -66,6 +74,11 @@ export type Database = {
           dropoff_address: string
           estimated_drive_minutes?: number
           first_name: string
+          flags_adipositas?: boolean | null
+          flags_barrier_free?: boolean | null
+          flags_infectious?: boolean | null
+          flags_visually_impaired?: boolean | null
+          flags_wheelchair?: boolean | null
           has_special_requirements?: boolean
           id?: string
           is_adipositas?: boolean
@@ -84,10 +97,12 @@ export type Database = {
           special_requirements_note?: string | null
           status?: string
           updated_at?: string
+          vehicle_id?: string | null
         }
         Update: {
           additional_info?: string | null
           additional_notes?: string | null
+          attachment_url?: string | null
           barrier_free?: boolean | null
           birth_date?: string
           booking_date?: string | null
@@ -101,6 +116,11 @@ export type Database = {
           dropoff_address?: string
           estimated_drive_minutes?: number
           first_name?: string
+          flags_adipositas?: boolean | null
+          flags_barrier_free?: boolean | null
+          flags_infectious?: boolean | null
+          flags_visually_impaired?: boolean | null
+          flags_wheelchair?: boolean | null
           has_special_requirements?: boolean
           id?: string
           is_adipositas?: boolean
@@ -119,6 +139,7 @@ export type Database = {
           special_requirements_note?: string | null
           status?: string
           updated_at?: string
+          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -147,6 +168,13 @@ export type Database = {
             columns: ["partner_link_id"]
             isOneToOne: false
             referencedRelation: "partner_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_vehicle"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -654,6 +682,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vehicles: {
+        Row: {
+          active: boolean | null
+          company_id: string
+          created_at: string | null
+          id: string
+          name: string
+          supports_stretcher: boolean | null
+          supports_wheelchair: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          supports_stretcher?: boolean | null
+          supports_wheelchair?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          supports_stretcher?: boolean | null
+          supports_wheelchair?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
