@@ -652,7 +652,7 @@ export const MedicalTransportBooking: React.FC<MedicalTransportBookingProps> = (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <STEPS[currentStep - 1].icon className="h-5 w-5" />
+            {React.createElement(STEPS[currentStep - 1].icon, { className: "h-5 w-5" })}
             <span>{STEPS[currentStep - 1].title}</span>
           </CardTitle>
           <p className="text-sm text-muted-foreground">
