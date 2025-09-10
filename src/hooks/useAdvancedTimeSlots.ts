@@ -5,7 +5,6 @@ import {
   format, 
   isAfter, 
   isBefore, 
-  parseISO, 
   startOfDay, 
   isWeekend,
   getDay,
@@ -28,6 +27,7 @@ export interface WorkingHours {
   end: string;
   breakStart?: string;
   breakEnd?: string;
+  enabled?: boolean;
 }
 
 export interface WeeklyWorkingHours {
@@ -40,75 +40,48 @@ export interface WeeklyWorkingHours {
   sunday?: WorkingHours;
 }
 
-export interface Holiday {
-  date: string; // YYYY-MM-DD format
-  name: string;
-  workingHours?: WorkingHours; // Special hours for this day, if any
-}
-
-export interface AdvancedTimeSlotsOptions {
-  slotDuration?: number; // in minutes
-  bufferBefore?: number; // buffer before appointment in minutes
-  bufferAfter?: number; // buffer after appointment in minutes
-  minimumNoticeHours?: number; // minimum hours notice required
-  maxAdvanceBookingDays?: number; // maximum days in advance for booking
-  allowWeekends?: boolean;
-  weeklyHours?: WeeklyWorkingHours;
-  holidays?: Holiday[];
-  emergencySlots?: boolean; // Allow emergency bookings with reduced notice
-  vehicleCapacity?: number; // Number of vehicles available
-}
-
-export const useAdvancedTimeSlots = (
-  selectedDate: Date | undefined,
-  companyId: string,
-  defaultWorkingHours: WorkingHours,
-  options: AdvancedTimeSlotsOptions = {}
-) => {
+export const useAdvancedTimeSlots = (options: {
+  date: Date | undefined;
+  companyId: string;
+  slotDuration?: number;
+  bufferBefore?: number;
+  bufferAfter?: number;
+  workingHours?: WeeklyWorkingHours;
+}) => {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vehicleUtilization, setVehicleUtilization] = useState<Record<string, number>>({});
 
   const {
+    date: selectedDate,
+    companyId,
     slotDuration = 30,
     bufferBefore = 15,
     bufferAfter = 15,
-    minimumNoticeHours = 2,
-    maxAdvanceBookingDays = 30,
-    allowWeekends = false,
-    weeklyHours,
-    holidays = [],
-    emergencySlots = false,
-    vehicleCapacity = 1
+    workingHours
   } = options;
+
+  const minimumNoticeHours = 2;
+  const maxAdvanceBookingDays = 30;
+  const allowWeekends = true;
+  const emergencySlots = false;
+  const vehicleCapacity = 1;
 
   // Get working hours for specific date
   const getWorkingHoursForDate = useMemo(() => {
     return (date: Date): WorkingHours | null => {
-      // Check if it's a holiday
-      const dateString = format(date, 'yyyy-MM-dd');
-      const holiday = holidays.find(h => h.date === dateString);
-      if (holiday) {
-        return holiday.workingHours || null; // null means closed
+      if (!workingHours) {
+        return { start: '08:00', end: '18:00', enabled: true };
       }
-
-      // Check weekend policy
-      if (isWeekend(date) && !allowWeekends) {
-        return null;
-      }
-
-      // Get day-specific hours if available
-      if (weeklyHours) {
-        const dayOfWeek = getDay(date); // 0 = Sunday, 1 = Monday, etc.
-        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-        const dayName = dayNames[dayOfWeek];
-        return weeklyHours[dayName] || null;
-      }
-
-      return defaultWorkingHours;
+      
+      const dayOfWeek = getDay(date);
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+      const dayName = dayNames[dayOfWeek];
+      
+      return workingHours[dayName] || { start: '08:00', end: '18:00', enabled: true };
     };
-  }, [defaultWorkingHours, weeklyHours, holidays, allowWeekends]);
+  }, [workingHours]);
 
   useEffect(() => {
     if (!selectedDate || !companyId) {
@@ -131,7 +104,7 @@ export const useAdvancedTimeSlots = (
 
         // Get working hours for the selected date
         const workingHours = getWorkingHoursForDate(selectedDate);
-        if (!workingHours) {
+        if (!workingHours || !workingHours.enabled) {
           setTimeSlots([]);
           setError('An diesem Tag sind keine Buchungen möglich');
           return;
@@ -258,10 +231,9 @@ const getExistingBookings = async (date: Date, companyId: string) => {
   
   const { data, error } = await supabase
     .from('bookings')
-    .select('pickup_time, status')
-    .eq('company_id', companyId)
-    .gte('pickup_time', `${dateString}T00:00:00`)
-    .lt('pickup_time', `${dateString}T23:59:59`)
+    .select('pickup_time')
+    .eq('organization_id', companyId)
+    .eq('booking_date', dateString)
     .in('status', ['pending', 'confirmed', 'in_progress']);
   
   if (error) {
@@ -278,10 +250,9 @@ const getVehicleUtilization = async (date: Date, companyId: string): Promise<Rec
   
   const { data, error } = await supabase
     .from('bookings')
-    .select('pickup_time, estimated_drive_minutes, vehicle_id')
+    .select('pickup_time')
     .eq('organization_id', companyId)
-    .gte('pickup_time', `${dateString}T00:00:00`)
-    .lt('pickup_time', `${dateString}T23:59:59`)
+    .eq('booking_date', dateString)
     .in('status', ['confirmed', 'in_progress']);
   
   if (error || !data) {
@@ -292,7 +263,8 @@ const getVehicleUtilization = async (date: Date, companyId: string): Promise<Rec
   const utilization: Record<string, number> = {};
   
   data.forEach(booking => {
-    const hour = format(parseISO(booking.pickup_time), 'HH:00');
+    const [hours] = booking.pickup_time.split(':').map(Number);
+    const hour = `${hours.toString().padStart(2, '0')}:00`;
     utilization[hour] = (utilization[hour] || 0) + 1;
   });
   
@@ -349,9 +321,11 @@ const checkAdvancedSlotAvailability = (
   
   // Check conflicts with existing bookings
   for (const booking of existingBookings) {
-    const bookingTime = parseISO(booking.pickup_time);
-    const bookingDuration = options.slotDuration; // Use default slot duration
-    const bookingBuffer = 15; // Use default buffer
+    const [bookingHours, bookingMinutes] = booking.pickup_time.split(':').map(Number);
+    const bookingTime = new Date(slotTime);
+    bookingTime.setHours(bookingHours, bookingMinutes, 0, 0);
+    const bookingDuration = options.slotDuration;
+    const bookingBuffer = 15;
     const bookingEnd = addMinutes(bookingTime, bookingDuration);
     
     // Calculate buffer zones
