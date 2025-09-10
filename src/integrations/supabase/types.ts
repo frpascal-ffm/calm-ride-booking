@@ -18,71 +18,107 @@ export type Database = {
         Row: {
           additional_info: string | null
           additional_notes: string | null
-          adipositas: boolean | null
           barrier_free: boolean | null
-          booking_date: string
-          case_number: string | null
+          birth_date: string
+          booking_date: string | null
+          buffer_minutes: number
+          calendar_event_id: string | null
+          case_number: string
           company_id: string | null
+          confirmation_email: string
           created_at: string
-          destination_address: string
+          destination_address: string | null
+          dropoff_address: string
+          estimated_drive_minutes: number
+          first_name: string
+          has_special_requirements: boolean
           id: string
-          infectious: boolean | null
+          is_adipositas: boolean
+          is_infectious: boolean
+          is_visually_impaired: boolean
+          is_wheelchair: boolean
+          last_name: string
+          needs_barrier_free: boolean
+          organization_id: string
           partner_id: string | null
-          patient_birth_date: string | null
-          patient_insurance: string | null
-          patient_name: string
+          partner_link_id: string
+          patient_notes: string | null
           pickup_address: string
-          pickup_time: string
-          status: string | null
+          pickup_datetime: string
+          pickup_time: string | null
+          special_requirements_note: string | null
+          status: string
           updated_at: string
-          visually_impaired: boolean | null
-          wheelchair: boolean | null
         }
         Insert: {
           additional_info?: string | null
           additional_notes?: string | null
-          adipositas?: boolean | null
           barrier_free?: boolean | null
-          booking_date: string
-          case_number?: string | null
+          birth_date: string
+          booking_date?: string | null
+          buffer_minutes?: number
+          calendar_event_id?: string | null
+          case_number: string
           company_id?: string | null
+          confirmation_email: string
           created_at?: string
-          destination_address: string
+          destination_address?: string | null
+          dropoff_address: string
+          estimated_drive_minutes?: number
+          first_name: string
+          has_special_requirements?: boolean
           id?: string
-          infectious?: boolean | null
+          is_adipositas?: boolean
+          is_infectious?: boolean
+          is_visually_impaired?: boolean
+          is_wheelchair?: boolean
+          last_name: string
+          needs_barrier_free?: boolean
+          organization_id: string
           partner_id?: string | null
-          patient_birth_date?: string | null
-          patient_insurance?: string | null
-          patient_name: string
+          partner_link_id: string
+          patient_notes?: string | null
           pickup_address: string
-          pickup_time: string
-          status?: string | null
+          pickup_datetime: string
+          pickup_time?: string | null
+          special_requirements_note?: string | null
+          status?: string
           updated_at?: string
-          visually_impaired?: boolean | null
-          wheelchair?: boolean | null
         }
         Update: {
           additional_info?: string | null
           additional_notes?: string | null
-          adipositas?: boolean | null
           barrier_free?: boolean | null
-          booking_date?: string
-          case_number?: string | null
+          birth_date?: string
+          booking_date?: string | null
+          buffer_minutes?: number
+          calendar_event_id?: string | null
+          case_number?: string
           company_id?: string | null
+          confirmation_email?: string
           created_at?: string
-          destination_address?: string
+          destination_address?: string | null
+          dropoff_address?: string
+          estimated_drive_minutes?: number
+          first_name?: string
+          has_special_requirements?: boolean
           id?: string
-          infectious?: boolean | null
+          is_adipositas?: boolean
+          is_infectious?: boolean
+          is_visually_impaired?: boolean
+          is_wheelchair?: boolean
+          last_name?: string
+          needs_barrier_free?: boolean
+          organization_id?: string
           partner_id?: string | null
-          patient_birth_date?: string | null
-          patient_insurance?: string | null
-          patient_name?: string
+          partner_link_id?: string
+          patient_notes?: string | null
           pickup_address?: string
-          pickup_time?: string
-          status?: string | null
+          pickup_datetime?: string
+          pickup_time?: string | null
+          special_requirements_note?: string | null
+          status?: string
           updated_at?: string
-          visually_impaired?: boolean | null
-          wheelchair?: boolean | null
         }
         Relationships: [
           {
@@ -93,10 +129,176 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_partner_link_id_fkey"
+            columns: ["partner_link_id"]
+            isOneToOne: false
+            referencedRelation: "partner_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          settings: Json | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          settings?: Json | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          settings?: Json | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_modules: {
+        Row: {
+          company_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          module_id: string
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          module_id: string
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          module_id?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_modules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_modules_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          base_rate: number | null
+          company_id: string
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          contract_name: string
+          contract_number: string | null
+          contract_type: string
+          created_at: string
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          km_rate: number | null
+          notes: string | null
+          partner_name: string
+          special_conditions: Json | null
+          start_date: string
+          time_rate: number | null
+          updated_at: string
+        }
+        Insert: {
+          base_rate?: number | null
+          company_id: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_name: string
+          contract_number?: string | null
+          contract_type: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          km_rate?: number | null
+          notes?: string | null
+          partner_name: string
+          special_conditions?: Json | null
+          start_date: string
+          time_rate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          base_rate?: number | null
+          company_id?: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_name?: string
+          contract_number?: string | null
+          contract_type?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          km_rate?: number | null
+          notes?: string | null
+          partner_name?: string
+          special_conditions?: Json | null
+          start_date?: string
+          time_rate?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -136,44 +338,156 @@ export type Database = {
           },
         ]
       }
+      modules: {
+        Row: {
+          base_price: number | null
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          name: string
+          stripe_product_id: string | null
+        }
+        Insert: {
+          base_price?: number | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          stripe_product_id?: string | null
+        }
+        Update: {
+          base_price?: number | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          stripe_product_id?: string | null
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
+          address: string | null
           arbeitszeiten_end: string | null
           arbeitszeiten_start: string | null
-          created_at: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
           id: string
           karenzzeit: number | null
           name: string
-          settings: Json | null
-          slug: string
+          slug: string | null
           standard_email: string | null
-          updated_at: string | null
+          updated_at: string
+          working_hours: Json
         }
         Insert: {
+          address?: string | null
           arbeitszeiten_end?: string | null
           arbeitszeiten_start?: string | null
-          created_at?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
           id?: string
           karenzzeit?: number | null
           name: string
-          settings?: Json | null
-          slug: string
+          slug?: string | null
           standard_email?: string | null
-          updated_at?: string | null
+          updated_at?: string
+          working_hours?: Json
         }
         Update: {
+          address?: string | null
           arbeitszeiten_end?: string | null
           arbeitszeiten_start?: string | null
-          created_at?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
           id?: string
           karenzzeit?: number | null
           name?: string
-          settings?: Json | null
-          slug?: string
+          slug?: string | null
           standard_email?: string | null
-          updated_at?: string | null
+          updated_at?: string
+          working_hours?: Json
         }
         Relationships: []
+      }
+      partner_known_emails: {
+        Row: {
+          email: string
+          id: string
+          last_used_at: string
+          organization_id: string
+          usage_count: number
+        }
+        Insert: {
+          email: string
+          id?: string
+          last_used_at?: string
+          organization_id: string
+          usage_count?: number
+        }
+        Update: {
+          email?: string
+          id?: string
+          last_used_at?: string
+          organization_id?: string
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_known_emails_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_links: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          organization_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partners: {
         Row: {
@@ -212,6 +526,131 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rides: {
+        Row: {
+          arrival_time: string | null
+          base_rate: number | null
+          booking_id: string | null
+          company_id: string
+          created_at: string
+          destination_address: string
+          distance_km: number | null
+          driver_notes: string | null
+          duration_minutes: number | null
+          id: string
+          insurance_name: string | null
+          insurance_number: string | null
+          km_rate: number | null
+          patient_name: string
+          pickup_address: string
+          pickup_time: string
+          status: string | null
+          time_rate: number | null
+          total_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          arrival_time?: string | null
+          base_rate?: number | null
+          booking_id?: string | null
+          company_id: string
+          created_at?: string
+          destination_address: string
+          distance_km?: number | null
+          driver_notes?: string | null
+          duration_minutes?: number | null
+          id?: string
+          insurance_name?: string | null
+          insurance_number?: string | null
+          km_rate?: number | null
+          patient_name: string
+          pickup_address: string
+          pickup_time: string
+          status?: string | null
+          time_rate?: number | null
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          arrival_time?: string | null
+          base_rate?: number | null
+          booking_id?: string | null
+          company_id?: string
+          created_at?: string
+          destination_address?: string
+          distance_km?: number | null
+          driver_notes?: string | null
+          duration_minutes?: number | null
+          id?: string
+          insurance_name?: string | null
+          insurance_number?: string | null
+          km_rate?: number | null
+          patient_name?: string
+          pickup_address?: string
+          pickup_time?: string
+          status?: string | null
+          time_rate?: number | null
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rides_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          is_active?: boolean | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
