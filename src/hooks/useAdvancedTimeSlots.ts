@@ -16,6 +16,7 @@ export interface TimeSlot {
   reason?: string;
   priority?: 'high' | 'medium' | 'low';
   estimatedDuration?: number;
+  availableVehicles?: number;
 }
 
 export interface WorkingHours {
@@ -60,7 +61,7 @@ export const useAdvancedTimeSlots = (options: {
 
   const minimumNoticeHours = 2;
   const maxAdvanceBookingDays = 30;
-  const vehicleCapacity = 1;
+  const maxVehicles = 5; // Default vehicle capacity
 
   // Get working hours for specific date
   const getWorkingHoursForDate = useMemo(() => {
@@ -115,6 +116,14 @@ export const useAdvancedTimeSlots = (options: {
 
         // Check availability for each slot
         const availableSlots = slots.map(slot => {
+          const [hours, minutes] = slot.split(':').map(Number);
+          const slotDateTime = new Date(selectedDate);
+          slotDateTime.setHours(hours, minutes, 0, 0);
+          
+          // Get vehicle utilization for this hour
+          const hourKey = hours.toString().padStart(2, '0') + ':00';
+          const currentUtilization = utilization[hourKey] || 0;
+          
           const availability = checkSlotAvailability(
             slot,
             selectedDate,
@@ -125,16 +134,19 @@ export const useAdvancedTimeSlots = (options: {
               bufferAfter,
               slotDuration,
               minimumNoticeHours,
-              vehicleCapacity
+              vehicleCapacity: maxVehicles
             }
           );
           
+          const availableVehicles = Math.max(0, maxVehicles - currentUtilization);
+          
           return {
             time: slot,
-            available: availability.available,
-            reason: availability.reason,
-            priority: availability.priority,
-            estimatedDuration: slotDuration
+            available: availability.available && availableVehicles > 0,
+            reason: availableVehicles === 0 ? 'Keine Fahrzeuge verfügbar' : availability.reason,
+            priority: availability.priority || 'medium',
+            estimatedDuration: slotDuration,
+            availableVehicles,
           };
         });
 
@@ -158,7 +170,7 @@ export const useAdvancedTimeSlots = (options: {
     bufferAfter,
     minimumNoticeHours,
     maxAdvanceBookingDays,
-    vehicleCapacity
+    maxVehicles
   ]);
 
   return { 
@@ -224,8 +236,8 @@ const getExistingBookings = async (date: Date, companyId: string) => {
     .select('pickup_time')
     .eq('organization_id', companyId)
     .eq('booking_date', dateString)
-    .in('status', ['pending', 'confirmed', 'in_progress']);
-  
+    .in('status', ['planned', 'confirmed']);
+
   if (error) {
     console.error('Error fetching bookings:', error);
     return [];
@@ -243,8 +255,8 @@ const getVehicleUtilization = async (date: Date, companyId: string): Promise<Rec
     .select('pickup_time')
     .eq('organization_id', companyId)
     .eq('booking_date', dateString)
-    .in('status', ['confirmed', 'in_progress']);
-  
+    .in('status', ['confirmed', 'planned']);
+
   if (error || !data) {
     return {};
   }
@@ -253,9 +265,11 @@ const getVehicleUtilization = async (date: Date, companyId: string): Promise<Rec
   const utilization: Record<string, number> = {};
   
   data.forEach(booking => {
-    const [hours] = booking.pickup_time.split(':').map(Number);
-    const hour = `${hours.toString().padStart(2, '0')}:00`;
-    utilization[hour] = (utilization[hour] || 0) + 1;
+    if (booking.pickup_time) {
+      const [hours] = booking.pickup_time.split(':').map(Number);
+      const hour = `${hours.toString().padStart(2, '0')}:00`;
+      utilization[hour] = (utilization[hour] || 0) + 1;
+    }
   });
   
   return utilization;
@@ -307,21 +321,23 @@ const checkSlotAvailability = (
   
   // Check conflicts with existing bookings
   for (const booking of existingBookings) {
-    const [bookingHours, bookingMinutes] = booking.pickup_time.split(':').map(Number);
-    const bookingDateTime = new Date(selectedDate);
-    bookingDateTime.setHours(bookingHours, bookingMinutes, 0, 0);
-    const bookingEnd = addMinutes(bookingDateTime, options.slotDuration);
-    
-    // Simple overlap check
-    if (
-      (slotDateTime >= bookingDateTime && slotDateTime < bookingEnd) ||
-      (slotEnd > bookingDateTime && slotEnd <= bookingEnd) ||
-      (slotDateTime <= bookingDateTime && slotEnd >= bookingEnd)
-    ) {
-      return { 
-        available: false, 
-        reason: `Belegt (${format(bookingDateTime, 'HH:mm')} - ${format(bookingEnd, 'HH:mm')})` 
-      };
+    if (booking.pickup_time) {
+      const [bookingHours, bookingMinutes] = booking.pickup_time.split(':').map(Number);
+      const bookingDateTime = new Date(selectedDate);
+      bookingDateTime.setHours(bookingHours, bookingMinutes, 0, 0);
+      const bookingEnd = addMinutes(bookingDateTime, options.slotDuration);
+      
+      // Simple overlap check
+      if (
+        (slotDateTime >= bookingDateTime && slotDateTime < bookingEnd) ||
+        (slotEnd > bookingDateTime && slotEnd <= bookingEnd) ||
+        (slotDateTime <= bookingDateTime && slotEnd >= bookingEnd)
+      ) {
+        return { 
+          available: false, 
+          reason: `Belegt (${format(bookingDateTime, 'HH:mm')} - ${format(bookingEnd, 'HH:mm')})` 
+        };
+      }
     }
   }
   

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Calendar } from 'lucide-react';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -118,6 +118,28 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar',
+          redirectTo: `${window.location.origin}/auth`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Google-Anmeldung fehlgeschlagen",
+        description: error.message || "Ein Fehler ist aufgetreten",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center py-8 px-4">
       <div className="w-full max-w-md">
@@ -188,6 +210,28 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Anmeldung läuft..." : "Anmelden"}
                   </Button>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Oder
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Mit Google & Kalender anmelden
+                  </Button>
                 </form>
               </TabsContent>
               
@@ -247,6 +291,28 @@ const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                   
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Registrierung läuft..." : "Registrieren"}
+                  </Button>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Oder
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Mit Google & Kalender registrieren
                   </Button>
                 </form>
               </TabsContent>

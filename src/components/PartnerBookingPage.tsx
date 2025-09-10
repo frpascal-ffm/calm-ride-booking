@@ -3,6 +3,7 @@ import { useParams, Navigate } from 'react-router-dom';
 import { BookingForm } from './BookingForm';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { PrescriptionUpload } from './PrescriptionUpload';
 import { ArrowLeft, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,7 @@ const PartnerBookingPage = () => {
   const [partner, setPartner] = useState<Partner | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -185,6 +187,14 @@ const PartnerBookingPage = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Prescription Upload */}
+        <div className="mb-6">
+          <PrescriptionUpload 
+            onUploadComplete={setAttachmentUrl}
+            existingUrl={attachmentUrl}
+          />
         </div>
 
         {/* Booking Form */}
