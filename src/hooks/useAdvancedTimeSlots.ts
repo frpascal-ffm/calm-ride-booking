@@ -5,14 +5,10 @@ import {
   format, 
   isAfter, 
   isBefore, 
-  startOfDay, 
   isWeekend,
   getDay,
-  isSameDay,
-  addDays,
-  isToday
+  addDays
 } from 'date-fns';
-import { de } from 'date-fns/locale';
 
 export interface TimeSlot {
   time: string;
@@ -64,8 +60,6 @@ export const useAdvancedTimeSlots = (options: {
 
   const minimumNoticeHours = 2;
   const maxAdvanceBookingDays = 30;
-  const allowWeekends = true;
-  const emergencySlots = false;
   const vehicleCapacity = 1;
 
   // Get working hours for specific date
@@ -103,29 +97,27 @@ export const useAdvancedTimeSlots = (options: {
         }
 
         // Get working hours for the selected date
-        const workingHours = getWorkingHoursForDate(selectedDate);
-        if (!workingHours || !workingHours.enabled) {
+        const workingHoursForDay = getWorkingHoursForDate(selectedDate);
+        if (!workingHoursForDay || !workingHoursForDay.enabled) {
           setTimeSlots([]);
           setError('An diesem Tag sind keine Buchungen möglich');
           return;
         }
 
         // Generate time slots
-        const slots = generateDayTimeSlots(workingHours, slotDuration);
+        const slots = generateDayTimeSlots(workingHoursForDay, slotDuration);
         
-        // Get existing bookings and vehicle utilization
-        const [existingBookings, utilization] = await Promise.all([
-          getExistingBookings(selectedDate, companyId),
-          getVehicleUtilization(selectedDate, companyId)
-        ]);
+        // Get existing bookings
+        const existingBookings = await getExistingBookings(selectedDate, companyId);
+        const utilization = await getVehicleUtilization(selectedDate, companyId);
 
         setVehicleUtilization(utilization);
 
         // Check availability for each slot
         const availableSlots = slots.map(slot => {
-          const slotTime = parseTimeToDate(selectedDate, slot);
-          const availability = checkAdvancedSlotAvailability(
-            slotTime,
+          const availability = checkSlotAvailability(
+            slot,
+            selectedDate,
             existingBookings,
             utilization,
             {
@@ -133,7 +125,6 @@ export const useAdvancedTimeSlots = (options: {
               bufferAfter,
               slotDuration,
               minimumNoticeHours,
-              emergencySlots,
               vehicleCapacity
             }
           );
@@ -167,7 +158,6 @@ export const useAdvancedTimeSlots = (options: {
     bufferAfter,
     minimumNoticeHours,
     maxAdvanceBookingDays,
-    emergencySlots,
     vehicleCapacity
   ]);
 
@@ -272,8 +262,9 @@ const getVehicleUtilization = async (date: Date, companyId: string): Promise<Rec
 };
 
 // Enhanced availability checking
-const checkAdvancedSlotAvailability = (
-  slotTime: Date,
+const checkSlotAvailability = (
+  slotTime: string,
+  selectedDate: Date,
   existingBookings: any[],
   utilization: Record<string, number>,
   options: {
@@ -281,29 +272,24 @@ const checkAdvancedSlotAvailability = (
     bufferAfter: number;
     slotDuration: number;
     minimumNoticeHours: number;
-    emergencySlots: boolean;
     vehicleCapacity: number;
   }
 ): { available: boolean; reason?: string; priority?: 'high' | 'medium' | 'low' } => {
   const now = new Date();
-  const slotEnd = addMinutes(slotTime, options.slotDuration);
-  const slotHour = format(slotTime, 'HH:00');
+  const [hours, minutes] = slotTime.split(':').map(Number);
+  const slotDateTime = new Date(selectedDate);
+  slotDateTime.setHours(hours, minutes, 0, 0);
+  const slotEnd = addMinutes(slotDateTime, options.slotDuration);
+  const slotHour = format(slotDateTime, 'HH:00');
   
   // Check if slot is in the past
-  if (isBefore(slotTime, now)) {
+  if (isBefore(slotDateTime, now)) {
     return { available: false, reason: 'Vergangene Zeit' };
   }
   
-  // Check minimum notice time (with emergency override)
+  // Check minimum notice time
   const minimumNoticeTime = addMinutes(now, options.minimumNoticeHours * 60);
-  if (isBefore(slotTime, minimumNoticeTime)) {
-    if (options.emergencySlots) {
-      return { 
-        available: true, 
-        reason: 'Notfall-Slot (verkürzte Vorlaufzeit)',
-        priority: 'high'
-      };
-    }
+  if (isBefore(slotDateTime, minimumNoticeTime)) {
     return { 
       available: false, 
       reason: `Zu kurzfristig (min. ${options.minimumNoticeHours}h Vorlauf)` 
@@ -322,33 +308,19 @@ const checkAdvancedSlotAvailability = (
   // Check conflicts with existing bookings
   for (const booking of existingBookings) {
     const [bookingHours, bookingMinutes] = booking.pickup_time.split(':').map(Number);
-    const bookingTime = new Date(slotTime);
-    bookingTime.setHours(bookingHours, bookingMinutes, 0, 0);
-    const bookingDuration = options.slotDuration;
-    const bookingBuffer = 15;
-    const bookingEnd = addMinutes(bookingTime, bookingDuration);
+    const bookingDateTime = new Date(selectedDate);
+    bookingDateTime.setHours(bookingHours, bookingMinutes, 0, 0);
+    const bookingEnd = addMinutes(bookingDateTime, options.slotDuration);
     
-    // Calculate buffer zones
-    const bookingStartWithBuffer = addMinutes(bookingTime, -bookingBuffer);
-    const bookingEndWithBuffer = addMinutes(bookingEnd, bookingBuffer);
-    const slotStartWithBuffer = addMinutes(slotTime, -options.bufferBefore);
-    const slotEndWithBuffer = addMinutes(slotEnd, options.bufferAfter);
-    
-    // Check for overlaps with simplified logic
-    const slotStartsInBooking = isAfter(slotTime, bookingStartWithBuffer) && isBefore(slotTime, bookingEndWithBuffer);
-    const slotEndsInBooking = isAfter(slotEnd, bookingStartWithBuffer) && isBefore(slotEnd, bookingEndWithBuffer);
-    const bookingStartsInSlot = isAfter(bookingTime, slotStartWithBuffer) && isBefore(bookingTime, slotEndWithBuffer);
-    const bookingEndsInSlot = isAfter(bookingEnd, slotStartWithBuffer) && isBefore(bookingEnd, slotEndWithBuffer);
-    const slotContainsBooking = isBefore(slotTime, bookingTime) && isAfter(slotEnd, bookingEnd);
-    const bookingContainsSlot = isBefore(bookingTime, slotTime) && isAfter(bookingEnd, slotEnd);
-    
-    const hasOverlap = slotStartsInBooking || slotEndsInBooking || bookingStartsInSlot || 
-                      bookingEndsInSlot || slotContainsBooking || bookingContainsSlot;
-    
-    if (hasOverlap) {
+    // Simple overlap check
+    if (
+      (slotDateTime >= bookingDateTime && slotDateTime < bookingEnd) ||
+      (slotEnd > bookingDateTime && slotEnd <= bookingEnd) ||
+      (slotDateTime <= bookingDateTime && slotEnd >= bookingEnd)
+    ) {
       return { 
         available: false, 
-        reason: `Belegt (${format(bookingTime, 'HH:mm')} - ${format(bookingEnd, 'HH:mm')})` 
+        reason: `Belegt (${format(bookingDateTime, 'HH:mm')} - ${format(bookingEnd, 'HH:mm')})` 
       };
     }
   }
@@ -364,14 +336,6 @@ const checkAdvancedSlotAvailability = (
   }
   
   return { available: true, priority };
-};
-
-// Helper function to parse time string to Date object
-const parseTimeToDate = (date: Date, timeString: string): Date => {
-  const [hours, minutes] = timeString.split(':').map(Number);
-  const result = new Date(date);
-  result.setHours(hours, minutes, 0, 0);
-  return result;
 };
 
 // Export utility functions
